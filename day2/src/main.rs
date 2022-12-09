@@ -1,6 +1,8 @@
 use std::{error::Error, fs};
 
-pub fn play(input: &Vec<&str>, strategy: impl Fn(&str) -> u32) -> u32 {
+use futures::executor::block_on;
+
+pub async fn play(input: &Vec<&str>, strategy: impl Fn(&str) -> u32) -> u32 {
     input.into_iter().map(|round| strategy(round)).sum()
 }
 
@@ -34,43 +36,35 @@ pub fn second_strategy(round: &str) -> u32 {
     }
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let input = fs::read_to_string("input")?;
+async fn async_main(rounds: &Vec<&str>) {
+    let first_strategy = play(&rounds, first_strategy);
+    let second_strategy = play(&rounds, second_strategy);
 
-    let rounds: Vec<&str> = input.lines().collect();
-
-    let first_score: u32 = play(&rounds, first_strategy);
+    let (first_score, second_score) = futures::join!(first_strategy, second_strategy);
 
     println!(
         "The total score following the first strategy is {}",
         first_score
     );
 
-    let second_score: u32 = play(&rounds, second_strategy);
-
     println!(
-        "The total score following the second stategy is {}",
+        "The total score following the second strategy is {}",
         second_score
     );
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let input = fs::read_to_string("input")?;
+
+    let rounds: Vec<&str> = input.lines().collect();
+
+    block_on(async_main(&rounds));
 
     Ok(())
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{first_strategy, play, second_strategy};
-
-    #[test]
-    fn play_with_first_strategy() {
-        let rounds: Vec<&str> = vec!["A Y", "B X", "C Z"];
-        assert_eq!(play(&rounds, first_strategy), 15);
-    }
-
-    #[test]
-    fn play_with_second_strategy() {
-        let rounds: Vec<&str> = vec!["A Y", "B X", "C Z"];
-        assert_eq!(play(&rounds, second_strategy), 12);
-    }
 
     #[cfg(test)]
     mod first_strategy {
